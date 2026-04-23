@@ -9,6 +9,7 @@ import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.entity.Registration;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.entity.TrainingPoint;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.entity.User;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.ActivityStatus;
+import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.NotificationType;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.RegistrationStatus;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.Role;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.exception.BadRequestException;
@@ -33,15 +34,18 @@ public class RegistrationService {
     private final ActivityRepository activityRepository;
     private final UserRepository userRepository;
     private final TrainingPointRepository trainingPointRepository;
+    private final NotificationService notificationService;
 
     public RegistrationService(RegistrationRepository registrationRepository,
                                ActivityRepository activityRepository,
                                UserRepository userRepository,
-                               TrainingPointRepository trainingPointRepository) {
+                               TrainingPointRepository trainingPointRepository,
+                               NotificationService notificationService) {
         this.registrationRepository = registrationRepository;
         this.activityRepository = activityRepository;
         this.userRepository = userRepository;
         this.trainingPointRepository = trainingPointRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -124,7 +128,30 @@ public class RegistrationService {
         }
 
         registration.setStatus(newStatus);
-        return RegistrationResponse.from(registrationRepository.save(registration));
+        RegistrationResponse result = RegistrationResponse.from(registrationRepository.save(registration));
+
+        // Gửi thông báo đến sinh viên
+        User student = registration.getStudent();
+        Activity activity = registration.getActivity();
+        if (newStatus == RegistrationStatus.APPROVED) {
+            notificationService.send(
+                    student,
+                    NotificationType.REGISTRATION_APPROVED,
+                    "Đăng ký được duyệt!",
+                    "Đơn đăng ký hoạt động \"" + activity.getTitle() + "\" của bạn đã được chấp thuận.",
+                    activity.getId()
+            );
+        } else {
+            notificationService.send(
+                    student,
+                    NotificationType.REGISTRATION_REJECTED,
+                    "Đăng ký bị từ chối",
+                    "Đơn đăng ký hoạt động \"" + activity.getTitle() + "\" của bạn đã bị từ chối.",
+                    activity.getId()
+            );
+        }
+
+        return result;
     }
 
     @Transactional
@@ -150,6 +177,15 @@ public class RegistrationService {
             for (Registration reg : attended) {
                 if (ids.contains(reg.getId())) {
                     addTrainingPoint(reg.getStudent(), semester, activity.getPoints());
+                    // Gửi thông báo điểm danh xác nhận cho từng sinh viên
+                    notificationService.send(
+                            reg.getStudent(),
+                            NotificationType.ATTENDANCE_CONFIRMED,
+                            "Xác nhận điểm danh!",
+                            "Bạn đã được xác nhận tham dự hoạt động \"" + activity.getTitle()
+                                    + "\" và nhận được " + activity.getPoints() + " điểm rèn luyện.",
+                            activity.getId()
+                    );
                 }
             }
         }

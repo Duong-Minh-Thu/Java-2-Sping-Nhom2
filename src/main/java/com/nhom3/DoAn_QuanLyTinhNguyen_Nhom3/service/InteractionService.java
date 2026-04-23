@@ -113,14 +113,15 @@ public class InteractionService {
     }
 
     /**
-     * Lấy danh sách bình luận của một hoạt động (công khai).
+     * Lấy danh sách bình luận gốc của một hoạt động (không bao gồm replies).
      */
     public Page<CommentResponse> getComments(Long activityId, Pageable pageable) {
         if (!activityRepository.existsById(activityId)) {
             throw new ResourceNotFoundException("Không tìm thấy hoạt động với ID: " + activityId);
         }
-        return commentRepository.findByActivityIdOrderByCreatedAtDesc(activityId, pageable)
-                .map(CommentResponse::from);
+        return commentRepository
+                .findByActivityIdAndParentCommentIsNullOrderByCreatedAtDesc(activityId, pageable)
+                .map(c -> CommentResponse.from(c, commentRepository.countByParentCommentId(c.getId())));
     }
 
     /**
@@ -140,6 +141,50 @@ public class InteractionService {
         }
 
         commentRepository.delete(comment);
+    }
+
+    /**
+     * Sinh viên trả lời một bình luận (chỉ STUDENT).
+     */
+    @Transactional
+    public CommentResponse createReply(Long activityId, Long commentId, String username, CommentRequest request) {
+        User student = findUser(username);
+        if (student.getRole() != Role.STUDENT) {
+            throw new ForbiddenException("Chỉ sinh viên mới có thể trả lời bình luận");
+        }
+        Activity activity = findActivity(activityId);
+
+        ActivityComment parent = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bình luận với ID: " + commentId));
+
+        // Chỉ cho phép reply bình luận gốc, không cho reply lồng nhiều cấp
+        if (parent.getParentComment() != null) {
+            throw new com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.exception.BadRequestException(
+                "Không thể trả lời một reply, chỉ có thể trả lời bình luận gốc");
+        }
+
+        ActivityComment reply = ActivityComment.builder()
+                .activity(activity)
+                .student(student)
+                .content(request.getContent())
+                .parentComment(parent)
+                .build();
+
+        return CommentResponse.from(commentRepository.save(reply));
+    }
+
+    /**
+     * Lấy danh sách replies của một bình luận (công khai).
+     */
+    public Page<CommentResponse> getReplies(Long activityId, Long commentId, Pageable pageable) {
+        if (!activityRepository.existsById(activityId)) {
+            throw new ResourceNotFoundException("Không tìm thấy hoạt động với ID: " + activityId);
+        }
+        if (!commentRepository.existsById(commentId)) {
+            throw new ResourceNotFoundException("Không tìm thấy bình luận với ID: " + commentId);
+        }
+        return commentRepository.findByParentCommentIdOrderByCreatedAtAsc(commentId, pageable)
+                .map(CommentResponse::from);
     }
 
     // ==================== Helpers ====================

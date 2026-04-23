@@ -10,18 +10,26 @@ public class CommentResponse {
     private Long studentId;
     private String studentName;
     private String content;
+    private Long parentCommentId;   // null = bình luận gốc
+    private long replyCount;        // số lượng reply (chỉ dùng cho comment gốc)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public CommentResponse() {}
 
     public static CommentResponse from(ActivityComment comment) {
+        return from(comment, 0L);
+    }
+
+    public static CommentResponse from(ActivityComment comment, long replyCount) {
         CommentResponse r = new CommentResponse();
         r.id = comment.getId();
         r.activityId = comment.getActivity().getId();
         r.studentId = comment.getStudent().getId();
         r.studentName = comment.getStudent().getFullName();
         r.content = comment.getContent();
+        r.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
+        r.replyCount = replyCount;
         r.createdAt = comment.getCreatedAt();
         r.updatedAt = comment.getUpdatedAt();
         return r;
@@ -42,6 +50,12 @@ public class CommentResponse {
 
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+
+    public Long getParentCommentId() { return parentCommentId; }
+    public void setParentCommentId(Long parentCommentId) { this.parentCommentId = parentCommentId; }
+
+    public long getReplyCount() { return replyCount; }
+    public void setReplyCount(long replyCount) { this.replyCount = replyCount; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -5,6 +5,7 @@ import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.ActivityResponse;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.entity.Activity;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.entity.User;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.ActivityStatus;
+import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.NotificationType;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.Role;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.exception.BadRequestException;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.exception.ForbiddenException;
@@ -16,15 +17,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class ActivityService {
 
     private final ActivityRepository activityRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public ActivityService(ActivityRepository activityRepository, UserRepository userRepository) {
+    public ActivityService(ActivityRepository activityRepository,
+                           UserRepository userRepository,
+                           NotificationService notificationService) {
         this.activityRepository = activityRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public Page<ActivityResponse> getAllActivities(ActivityStatus status, String orgName, String location, Pageable pageable) {
@@ -69,7 +76,19 @@ public class ActivityService {
                 .status(ActivityStatus.UPCOMING)
                 .build();
 
-        return ActivityResponse.from(activityRepository.save(activity));
+        ActivityResponse response = ActivityResponse.from(activityRepository.save(activity));
+
+        // Gửi thông báo hoạt động mới đến tất cả STUDENT
+        List<User> students = userRepository.findByRole(Role.STUDENT);
+        notificationService.sendToAll(
+                students,
+                NotificationType.NEW_ACTIVITY,
+                "Hoạt động mới: " + activity.getTitle(),
+                "Tổ chức " + org.getFullName() + " vừa đăng hoạt động mới tại " + activity.getLocation(),
+                response.getId()
+        );
+
+        return response;
     }
 
     @Transactional
@@ -108,6 +127,18 @@ public class ActivityService {
             throw new ForbiddenException("Bạn không có quyền xóa hoạt động này");
         }
 
+        String title = activity.getTitle();
+        Long activityId = activity.getId();
         activityRepository.delete(activity);
+
+        // Gửi thông báo hủy đến tất cả STUDENT
+        List<User> students = userRepository.findByRole(Role.STUDENT);
+        notificationService.sendToAll(
+                students,
+                NotificationType.ACTIVITY_CANCELLED,
+                "Hoạt động bị hủy: " + title,
+                "Hoạt động \"" + title + "\" đã bị hủy bởi ban tổ chức.",
+                activityId
+        );
     }
 }

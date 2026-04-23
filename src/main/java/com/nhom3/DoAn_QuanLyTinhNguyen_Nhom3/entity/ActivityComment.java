@@ -23,6 +23,11 @@ public class ActivityComment {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    // null = bình luận gốc; có giá trị = reply của bình luận đó
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    private ActivityComment parentComment;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -55,6 +60,9 @@ public class ActivityComment {
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
 
+    public ActivityComment getParentComment() { return parentComment; }
+    public void setParentComment(ActivityComment parentComment) { this.parentComment = parentComment; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -67,6 +75,7 @@ public class ActivityComment {
         public Builder activity(Activity val) { c.activity = val; return this; }
         public Builder student(User val) { c.student = val; return this; }
         public Builder content(String val) { c.content = val; return this; }
+        public Builder parentComment(ActivityComment val) { c.parentComment = val; return this; }
 
         public ActivityComment build() { return c; }
     }

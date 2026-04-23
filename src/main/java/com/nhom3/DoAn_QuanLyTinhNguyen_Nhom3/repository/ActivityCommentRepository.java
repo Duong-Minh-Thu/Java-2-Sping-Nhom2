@@ -12,10 +12,17 @@ import java.util.Optional;
 @Repository
 public interface ActivityCommentRepository extends JpaRepository<ActivityComment, Long> {
 
+    // Lấy bình luận gốc (không phải reply)
     @EntityGraph(attributePaths = {"student"})
-    Page<ActivityComment> findByActivityIdOrderByCreatedAtDesc(Long activityId, Pageable pageable);
+    Page<ActivityComment> findByActivityIdAndParentCommentIsNullOrderByCreatedAtDesc(Long activityId, Pageable pageable);
+
+    // Lấy tất cả replies của một bình luận
+    @EntityGraph(attributePaths = {"student"})
+    Page<ActivityComment> findByParentCommentIdOrderByCreatedAtAsc(Long parentCommentId, Pageable pageable);
 
     long countByActivityId(Long activityId);
+
+    long countByParentCommentId(Long parentCommentId);
 
     Optional<ActivityComment> findByIdAndStudentId(Long id, Long studentId);
 }
