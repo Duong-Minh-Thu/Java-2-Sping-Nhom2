@@ -29,5 +29,20 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
                                             @Param("to") LocalDateTime to,
                                             Pageable pageable);
 
+    /**
+     * Tìm kiếm hoạt động linh hoạt: có thể lọc theo status, tên tổ chức, địa điểm.
+     * Các param null = bỏ qua điều kiện đó (tìm tất cả).
+     */
+    @EntityGraph(attributePaths = {"organization"})
+    @Query("SELECT a FROM Activity a WHERE " +
+           "(:status IS NULL OR a.status = :status) AND " +
+           "(:orgName IS NULL OR LOWER(a.organization.fullName) LIKE LOWER(CONCAT('%', :orgName, '%'))) AND " +
+           "(:location IS NULL OR LOWER(a.location) LIKE LOWER(CONCAT('%', :location, '%')))")
+    Page<Activity> search(@Param("status") ActivityStatus status,
+                          @Param("orgName") String orgName,
+                          @Param("location") String location,
+                          Pageable pageable);
+
     long count();
 }
+

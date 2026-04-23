@@ -2,14 +2,18 @@ package com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.controller;
 
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.request.ActivityRequest;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.request.BulkAttendanceRequest;
+import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.request.CommentRequest;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.request.FeedbackRequest;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.ActivityResponse;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.ApiResponse;
+import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.CommentResponse;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.FeedbackResponse;
+import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.LikeResponse;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.dto.response.RegistrationResponse;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.enums.ActivityStatus;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.service.ActivityService;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.service.FeedbackService;
+import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.service.InteractionService;
 import com.nhom3.DoAn_QuanLyTinhNguyen_Nhom3.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -33,19 +37,24 @@ public class ActivityController {
     private final ActivityService activityService;
     private final RegistrationService registrationService;
     private final FeedbackService feedbackService;
+    private final InteractionService interactionService;
 
     public ActivityController(ActivityService activityService,
-            RegistrationService registrationService,
-            FeedbackService feedbackService) {
+                              RegistrationService registrationService,
+                              FeedbackService feedbackService,
+                              InteractionService interactionService) {
         this.activityService = activityService;
         this.registrationService = registrationService;
         this.feedbackService = feedbackService;
+        this.interactionService = interactionService;
     }
 
-    @Operation(summary = "Lấy danh sách hoạt động (công khai, có phân trang và lọc theo status)")
+    @Operation(summary = "Lấy/Tìm kiếm danh sách hoạt động (công khai). Lọc theo status, tên tổ chức, địa điểm")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ActivityResponse>>> getAllActivities(
             @RequestParam(required = false) ActivityStatus status,
+            @RequestParam(required = false) String orgName,
+            @RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -53,7 +62,7 @@ public class ActivityController {
         Sort sort = sortDir.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
-        Page<ActivityResponse> activities = activityService.getAllActivities(status, PageRequest.of(page, size, sort));
+        Page<ActivityResponse> activities = activityService.getAllActivities(status, orgName, location, PageRequest.of(page, size, sort));
         return ResponseEntity.ok(ApiResponse.success(activities));
     }
 
@@ -144,5 +153,76 @@ public class ActivityController {
             @RequestParam(defaultValue = "10") int size) {
         Page<FeedbackResponse> feedbacks = feedbackService.getFeedbacksByActivity(id, PageRequest.of(page, size));
         return ResponseEntity.ok(ApiResponse.success(feedbacks));
+    }
+
+    @Operation(summary = "Xóa đánh giá (chủ đánh giá hoặc ADMIN)")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @DeleteMapping("/{id}/feedback/{feedbackId}")
+    @PreAuthorize("hasRole('STUDENT') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteFeedback(
+            @PathVariable Long id,
+            @PathVariable Long feedbackId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        feedbackService.deleteFeedback(id, feedbackId, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success("Xóa đánh giá thành công", null));
+    }
+
+    // ==================== LIKES ====================
+
+    @Operation(summary = "Toggle thả tim / bỏ tim hoạt động (chỉ STUDENT)")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping("/{id}/likes")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<LikeResponse>> toggleLike(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        LikeResponse response = interactionService.toggleLike(id, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "Xem số lượt thích của một hoạt động (công khai)")
+    @GetMapping("/{id}/likes")
+    public ResponseEntity<ApiResponse<LikeResponse>> getLikes(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String username = userDetails != null ? userDetails.getUsername() : null;
+        LikeResponse response = interactionService.getLikeStatus(id, username);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // ==================== COMMENTS ====================
+
+    @Operation(summary = "Sinh viên đăng bình luận vào hoạt động")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping("/{id}/comments")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<CommentResponse>> createComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody CommentRequest request) {
+        CommentResponse response = interactionService.createComment(id, userDetails.getUsername(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Bình luận thành công", response));
+    }
+
+    @Operation(summary = "Lấy danh sách bình luận của hoạt động (công khai)")
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<ApiResponse<Page<CommentResponse>>> getComments(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<CommentResponse> comments = interactionService.getComments(id, PageRequest.of(page, size));
+        return ResponseEntity.ok(ApiResponse.success(comments));
+    }
+
+    @Operation(summary = "Xóa bình luận (chủ bình luận hoặc ADMIN)")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @DeleteMapping("/{id}/comments/{commentId}")
+    @PreAuthorize("hasRole('STUDENT') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @PathVariable Long id,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        interactionService.deleteComment(id, commentId, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success("Xóa bình luận thành công", null));
     }
 }

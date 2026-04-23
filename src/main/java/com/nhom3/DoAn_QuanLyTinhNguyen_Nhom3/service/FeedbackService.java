@@ -78,4 +78,22 @@ public class FeedbackService {
         }
         return feedbackRepository.findByActivityId(activityId, pageable).map(FeedbackResponse::from);
     }
+
+    @Transactional
+    public void deleteFeedback(Long activityId, Long feedbackId, String username) {
+        if (!activityRepository.existsById(activityId)) {
+            throw new ResourceNotFoundException("Không tìm thấy hoạt động với ID: " + activityId);
+        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
+
+        Feedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy feedback với ID: " + feedbackId));
+
+        if (!feedback.getStudent().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+            throw new ForbiddenException("Bạn không có quyền xóa đánh giá này");
+        }
+
+        feedbackRepository.delete(feedback);
+    }
 }

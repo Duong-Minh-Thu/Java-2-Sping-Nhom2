@@ -27,9 +27,14 @@ public class ActivityService {
         this.userRepository = userRepository;
     }
 
-    public Page<ActivityResponse> getAllActivities(ActivityStatus status, Pageable pageable) {
-        if (status != null) {
-            return activityRepository.findByStatus(status, pageable).map(ActivityResponse::from);
+    public Page<ActivityResponse> getAllActivities(ActivityStatus status, String orgName, String location, Pageable pageable) {
+        // Nếu có bất kỳ filter nào (orgName hoặc location) → dùng search query linh hoạt
+        boolean hasFilter = (orgName != null && !orgName.isBlank()) || (location != null && !location.isBlank());
+        if (hasFilter || status != null) {
+            String orgNameParam = (orgName != null && !orgName.isBlank()) ? orgName.trim() : null;
+            String locationParam = (location != null && !location.isBlank()) ? location.trim() : null;
+            return activityRepository.search(status, orgNameParam, locationParam, pageable)
+                    .map(ActivityResponse::from);
         }
         return activityRepository.findAll(pageable).map(ActivityResponse::from);
     }
