@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Volunteer Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { margin-top: 50px; max-width: 600px; }
+        .card { border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: none; overflow: hidden; }
+        .card-header { padding: 20px 25px; border-bottom: none; }
+        dt { color: #6c757d; font-weight: 600; }
+        dd { color: #212529; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0 fw-bold">Volunteer Details</h4>
+            <span class="badge bg-white text-primary rounded-pill px-3 py-2" th:text="'ID: ' + ${volunteer.id}"></span>
+        </div>
+        <div class="card-body p-4 p-md-5">
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Full Name</dt>
+                <dd class="col-sm-8 fw-semibold" th:text="${volunteer.name}">John Doe</dd>
+                
+                <dt class="col-sm-4">Email Address</dt>
+                <dd class="col-sm-8"><a th:href="'mailto:' + ${volunteer.email}" th:text="${volunteer.email}">john@example.com</a></dd>
+                
+                <dt class="col-sm-4">Phone</dt>
+                <dd class="col-sm-8" th:text="${volunteer.phone}">123456789</dd>
+                
+                <dt class="col-sm-4">Skills</dt>
+                <dd class="col-sm-8 mb-0">
+                    <span class="badge bg-light text-dark border p-2 w-100 text-start text-wrap lh-base" th:text="${volunteer.skills}">Java, Spring</span>
+                </dd>
+            </dl>
+        </div>
+        <div class="card-footer bg-light p-3 d-flex justify-content-between border-top-0">
+            <a th:href="@{/volunteers}" class="btn btn-outline-secondary px-4">Back to List</a>
+            <div>
+                <a th:href="@{/volunteers/{id}/edit(id=${volunteer.id})}" class="btn btn-warning px-4 shadow-sm text-dark fw-semibold">Edit</a>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

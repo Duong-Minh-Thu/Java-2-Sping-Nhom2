@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Volunteer Form</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { margin-top: 50px; max-width: 600px; }
+        .form-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="form-card">
+        <h3 class="mb-4 text-primary fw-bold" th:text="${volunteer.id == null ? 'Create New Volunteer' : 'Edit Volunteer'}">Form</h3>
+        
+        <form th:action="@{${volunteer.id == null ? '/volunteers/create' : '/volunteers/' + volunteer.id + '/edit'}}" th:object="${volunteer}" method="post">
+            <input type="hidden" th:field="*{id}" />
+            
+            <div class="mb-3">
+                <label for="name" class="form-label fw-semibold">Full Name</label>
+                <input type="text" class="form-control" id="name" th:field="*{name}" placeholder="e.g. John Doe" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">Email Address</label>
+                <input type="email" class="form-control" id="email" th:field="*{email}" placeholder="name@example.com" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="phone" class="form-label fw-semibold">Phone Number</label>
+                <input type="text" class="form-control" id="phone" th:field="*{phone}" placeholder="+1 234 567 890" required>
+            </div>
+            
+            <div class="mb-4">
+                <label for="skills" class="form-label fw-semibold">Skills & Experience</label>
+                <textarea class="form-control" id="skills" th:field="*{skills}" rows="4" placeholder="Describe volunteer skills..." required></textarea>
+            </div>
+            
+            <div class="d-flex justify-content-between pt-3 border-top">
+                <a th:href="@{/volunteers}" class="btn btn-outline-secondary px-4">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4 shadow-sm" th:text="${volunteer.id == null ? 'Save Volunteer' : 'Update Changes'}">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
